@@ -33,6 +33,7 @@ async function getData(uri) {
   // Perform the fetch operation
   const data = await fetch(url, fetchOptions)
     .then((response) => {
+      console.log(response)
       return response.json();
     }) // Assuming the response is JSON
     .catch((error) => {
