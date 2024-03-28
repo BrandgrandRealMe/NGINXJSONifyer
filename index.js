@@ -4,6 +4,8 @@ const uname = process.env.UNAME;
 const pword = process.env.PWORD;
 const port = process.env.PORT || 8080;
 
+console.log(`uname: ${uname}`, `pword: ${pword}`)
+
 // URL of your Nginx API endpoint for searching media http://${uname}:${pword}@media.brandgrand.rocks/media/movies/
 const mediaSearchUrl = `http://media.brandgrand.rocks/json/`;
 
@@ -33,7 +35,6 @@ async function getData(uri) {
   // Perform the fetch operation
   const data = await fetch(url, fetchOptions)
     .then((response) => {
-      console.log(response)
       return response.json();
     }) // Assuming the response is JSON
     .catch((error) => {
@@ -103,7 +104,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(port, () => {
-  console.log("Server listening on port 3000");
+  console.log("Server listening on port "+port);
 });
 
 GetData();
