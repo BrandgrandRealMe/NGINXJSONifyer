@@ -109,9 +109,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(data));
   } else if (parsedUrl.pathname === '/process-jsonp') {
-    var data = await Scraper(); // Get the data
-    // Simulate fetching data from an external source (replace with actual logic)
-    const jsonData = { message: 'Data from Node.js server' };
+    var data = await Scraper(); // Get the data from the Scraper function
 
     // Wrap the JSON data in the callback function
     const responseText = `${callbackName}(${JSON.stringify(data)})`;
