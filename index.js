@@ -1,11 +1,13 @@
 require("dotenv").config();
 const http = require("http");
+const url = require('url'); // To parse the query parameters
 
 const uname = process.env.UNAME;
 const pword = process.env.PWORD;
 const port = process.env.PORT || 8080;
+const mediabase = process.env.MEDIABASE;
 
-console.log(`uname: ${uname}`, `pword: ${pword}`)
+console.log(`uname: ${uname}`, `pword: ${pword}`);
 
 // URL of your Nginx API endpoint for searching media http://${uname}:${pword}@media.brandgrand.rocks/media/movies/
 const mediaSearchUrl = `http://media.brandgrand.rocks/json/`;
@@ -57,55 +59,70 @@ async function Scraper() {
 
   const baseDir = await getData(); // /media/
   // console.log(baseDir);
-  const results = await Promise.all(
+  await Promise.all(
     baseDir.map(async (data) => {
       const CurrentType = data.name;
       const CurrentTypeDATA = await getData(CurrentType);
 
-      await CurrentTypeDATA.map(async (data) => {
-        const CurrentName = data.name;
-        if (CurrentType == "movies") {
-          const CurrentMediaDATA = await getData(
-            CurrentType + "/" + CurrentName,
-          );
-          await CurrentMediaDATA.map(async (data) => {
-            const CurrentMedia = data.name;
-            const extension = CurrentMedia.split(".").pop().toLowerCase();
-            if (videoExtensions.includes(extension)) {
-              const videoURI =
-                CurrentType + "/" + CurrentName + "/" + encodeURI(CurrentMedia);
-              console.log(videoURI)
-              mediaData.movies.push({
-                title: CurrentName,
-                videoURI: videoURI,
-              });
-            }
-          });
-        } else if (CurrentType == "series") {
-          mediaData.series.push({
-            title: CurrentName,
-          });
-        }
-        console.log(`Type: ${CurrentType} Name: ${CurrentName}`);
-      });
+      await Promise.all(
+        CurrentTypeDATA.map(async (data) => {
+          const CurrentName = data.name;
+          if (CurrentType == "movies") {
+            const CurrentMediaDATA = await getData(
+              CurrentType + "/" + CurrentName,
+            );
+            console.log("CurrentMediaDATA", CurrentMediaDATA);
+            CurrentMediaDATA.map((data) => {
+              const CurrentMedia = data.name;
+              const extension = CurrentMedia.split(".").pop().toLowerCase();
+              const medianame = CurrentMedia.replace(`.` + extension, "");
+              if (videoExtensions.includes(extension)) {
+                const videoURI = "/" + mediabase + "/" + CurrentType + "/" + CurrentName + "/" + CurrentMedia;
+                const posterURI = "/" + mediabase + "/" + CurrentType + "/" + CurrentName + "/" + medianame + "-poster.jpg";
+                mediaData.movies.push({
+                  title: CurrentName,
+                  videoURI: encodeURI(videoURI),
+                  posterURI: encodeURI(posterURI)
+                });
+                console.log(`Found Video file: `, videoURI);
+              }
+            });
+          } else if (CurrentType == "series") {
+            mediaData.series.push({
+              title: CurrentName,
+            });
+          }
+          //console.log(`Type: ${CurrentType} Name: ${CurrentName}`);
+        }),
+      );
       return mediaData;
     }),
   );
-  return results;
-}
-async function GetData() {
-  const data = await Scraper();
-  console.log(data);
+  return mediaData;
 }
 
 const server = http.createServer(async (req, res) => {
-  var data = await Scraper();
-  res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(data));
+  const parsedUrl = url.parse(req.url, true); // Parse the URL with query parameters
+  const callbackName = parsedUrl.query.callback; // Extract the callback name
+  if (parsedUrl.pathname === '/') {
+    var data = await Scraper();
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify(data));
+  } else if (parsedUrl.pathname === '/process-jsonp') {
+    var data = await Scraper(); // Get the data
+    // Simulate fetching data from an external source (replace with actual logic)
+    const jsonData = { message: 'Data from Node.js server' };
+
+    // Wrap the JSON data in the callback function
+    const responseText = `${callbackName}(${JSON.stringify(data)})`;
+    res.writeHead(200, { 'Content-Type': 'application/javascript' });
+    res.end(responseText);
+  } else {
+    res.statusCode = 404;
+    res.end('Not Found');
+  }
 });
 
 server.listen(port, () => {
-  console.log("Server listening on port "+port);
+  console.log("Server listening on port " + port);
 });
-
-GetData();
